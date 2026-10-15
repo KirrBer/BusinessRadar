@@ -7,11 +7,13 @@ authors = [
 ]
 requires-python = ">=3.13"
 dependencies = [
+    "fastapi>=0.115.0",
     "joblib>=1.6.0",
     "numpy>=2.5.4",
     "pandas>=3.0.6",
     "plotly>=7.1.0",
     "scikit-learn>=1.9.1",
+    "uvicorn[standard]>=0.34.0",
 ]
 
 [project.scripts]
@@ -27,5 +29,6 @@ testpaths = ["tests"]
 
 [dependency-groups]
 dev = [
+    "httpx>=0.28.0",
     "pytest>=9.1.1",
 ]
