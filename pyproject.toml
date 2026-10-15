@@ -1,0 +1,31 @@
+[project]
+name = "businessradar"
+version = "0.1.0"
+description = "Add your description here"
+authors = [
+    { name = "egor", email = "egorlisovoj6@gmail.com" }
+]
+requires-python = ">=3.13"
+dependencies = [
+    "joblib>=1.6.0",
+    "numpy>=2.5.4",
+    "pandas>=3.0.6",
+    "plotly>=7.1.0",
+    "scikit-learn>=1.9.1",
+]
+
+[project.scripts]
+businessradar = "businessradar:main"
+
+[build-system]
+requires = ["uv_build>=0.12.18,<0.13.0"]
+build-backend = "uv_build"
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+]
