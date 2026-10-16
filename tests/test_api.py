@@ -24,6 +24,13 @@ def test_health_check():
     assert response.json() == {"status": "ok"}
 
 
+def test_dashboard_is_available():
+    response = client.get("/")
+
+    assert response.status_code == 200
+    assert "BusinessRadar" in response.text
+
+
 def test_predict_returns_prediction(monkeypatch):
     expected = {
         "score": 8,
@@ -44,6 +51,14 @@ def test_predict_returns_prediction(monkeypatch):
 def test_predict_rejects_negative_features():
     response = client.post(
         "/api/v1/predict", json={**FEATURES, "traffic": -1}
+    )
+
+    assert response.status_code == 422
+
+
+def test_predict_rejects_out_of_range_features():
+    response = client.post(
+        "/api/v1/predict", json={**FEATURES, "peak_factor": 1.1}
     )
 
     assert response.status_code == 422

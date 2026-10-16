@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>BusinessRadar — умный выбор локации</title>
+  <style>
+    :root {
+      --ink: #17212b;
+      --muted: #6f7b87;
+      --line: #e4e9ee;
+      --blue: #2764e7;
+      --blue-dark: #1745ab;
+      --soft-blue: #edf3ff;
+      --green: #159570;
+      --red: #d94f62;
+      --shadow: 0 24px 60px rgba(24, 43, 71, .12);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      color: var(--ink);
+      background: #f5f8fb;
+      font: 16px/1.5 Inter, ui-sans-serif, system-ui, -apple-system, sans-serif;
+    }
+    .shell { max-width: 1120px; margin: 0 auto; padding: 28px 20px 56px; }
+    header { display: flex; justify-content: space-between; align-items: center; gap: 16px; margin-bottom: 52px; }
+    .brand { display: flex; align-items: center; gap: 12px; font-weight: 800; font-size: 20px; letter-spacing: -.03em; }
+    .mark { display: grid; place-items: center; width: 38px; height: 38px; color: white; background: var(--blue); border-radius: 12px; box-shadow: 0 8px 18px #2764e744; }
+    .status { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 13px; }
+    .status i { width: 8px; height: 8px; background: var(--green); border-radius: 50%; }
+    .hero { max-width: 730px; margin-bottom: 30px; }
+    h1 { margin: 0 0 14px; font-size: clamp(34px, 5vw, 58px); line-height: 1.03; letter-spacing: -.06em; }
+    .hero p { max-width: 610px; margin: 0; color: var(--muted); font-size: 18px; }
+    .layout { display: grid; grid-template-columns: minmax(300px, .82fr) minmax(380px, 1.18fr); gap: 22px; align-items: start; }
+    .card { background: #fff; border: 1px solid var(--line); border-radius: 24px; box-shadow: var(--shadow); }
+    .form-card { padding: 26px; }
+    .card-title { margin: 0 0 5px; font-size: 20px; letter-spacing: -.03em; }
+    .card-subtitle { margin: 0 0 23px; color: var(--muted); font-size: 14px; }
+    label { display: block; margin: 0 0 7px; color: #495766; font-size: 13px; font-weight: 700; }
+    .coordinates { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    input { width: 100%; padding: 13px 14px; border: 1px solid var(--line); border-radius: 11px; outline: none; color: var(--ink); background: #fbfcfd; font: inherit; transition: .2s; }
+    input:focus { border-color: var(--blue); box-shadow: 0 0 0 4px #2764e71a; background: #fff; }
+    .hint { margin: 9px 0 22px; color: var(--muted); font-size: 12px; }
+    details { margin: 0 0 22px; border-top: 1px solid var(--line); padding-top: 16px; }
+    summary { cursor: pointer; color: var(--blue); font-size: 14px; font-weight: 700; }
+    .advanced { display: grid; grid-template-columns: 1fr 1fr; gap: 13px; padding-top: 16px; }
+    .advanced input { padding: 10px 11px; font-size: 14px; }
+    button { width: 100%; padding: 14px 18px; border: 0; border-radius: 12px; color: #fff; background: var(--blue); cursor: pointer; font: inherit; font-weight: 800; transition: .2s; }
+    button:hover { background: var(--blue-dark); transform: translateY(-1px); }
+    button:disabled { cursor: wait; opacity: .65; transform: none; }
+    .result { min-height: 100%; padding: 30px; overflow: hidden; }
+    .empty { display: grid; place-items: center; min-height: 400px; text-align: center; color: var(--muted); }
+    .empty-icon { display: grid; place-items: center; width: 74px; height: 74px; margin-bottom: 18px; border-radius: 22px; color: var(--blue); background: var(--soft-blue); font-size: 32px; }
+    .empty strong { display: block; margin-bottom: 7px; color: var(--ink); font-size: 20px; }
+    .result-content { display: none; }
+    .result-content.visible { display: block; }
+    .result-head { display: flex; justify-content: space-between; gap: 15px; align-items: flex-start; margin-bottom: 23px; }
+    .eyebrow { margin: 0 0 5px; color: var(--blue); font-size: 12px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
+    .result h2 { margin: 0; font-size: 26px; letter-spacing: -.04em; }
+    .score { flex: 0 0 auto; padding: 12px 16px; border-radius: 16px; color: var(--blue); background: var(--soft-blue); text-align: center; }
+    .score b { display: block; font-size: 28px; line-height: 1; }
+    .score span { font-size: 11px; color: var(--muted); }
+    .metrics { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 24px; }
+    .metric { padding: 15px; border: 1px solid var(--line); border-radius: 15px; }
+    .metric small { display: block; color: var(--muted); font-size: 12px; }
+    .metric b { display: block; margin-top: 3px; font-size: 19px; }
+    .recommendation { padding: 18px; border-radius: 17px; color: #254364; background: #f1f7ff; }
+    .recommendation h3 { margin: 0 0 8px; font-size: 14px; }
+    .recommendation p { margin: 0; font-size: 14px; }
+    .error { display: none; margin-top: 14px; color: var(--red); font-size: 13px; }
+    .error.visible { display: block; }
+    @media (max-width: 760px) {
+      header { margin-bottom: 34px; }
+      .layout { grid-template-columns: 1fr; }
+      .result { min-height: 0; }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <header>
+      <div class="brand"><span class="mark">⌖</span> BusinessRadar</div>
+      <div class="status"><i></i> ML-сервис онлайн</div>
+    </header>
+    <section class="hero">
+      <h1>Найдите место,<br><em>где бизнес растёт.</em></h1>
+      <p>Введите координаты локации — алгоритм оценит спрос, конкуренцию и потенциал района.</p>
+    </section>
+    <section class="layout">
+      <form class="card form-card" id="predict-form">
+        <h2 class="card-title">Параметры локации</h2>
+        <p class="card-subtitle">Начните с координат на карте или из навигатора</p>
+        <div class="coordinates">
+          <div><label for="lat">Широта</label><input id="lat" name="lat" type="number" step="any" value="55.75" required></div>
+          <div><label for="lon">Долгота</label><input id="lon" name="lon" type="number" step="any" value="37.62" required></div>
+        </div>
+        <p class="hint">Например, координаты центра Москвы: 55.75, 37.62</p>
+        <details>
+          <summary>Уточнить параметры бизнеса</summary>
+          <div class="advanced">
+            <div><label for="traffic">Трафик, посетителей/день</label><input id="traffic" type="number" min="0" step="any" value="500" title="Условная оценка потенциальных посетителей в день"></div>
+            <div><label for="pop_density">Плотность, чел./км²</label><input id="pop_density" type="number" min="0" step="any" value="180" title="Оценка числа жителей на один квадратный километр"></div>
+            <div><label for="competitors">Конкуренты, точек</label><input id="competitors" type="number" min="0" step="any" value="1" title="Условное число конкурентов в зоне анализа"></div>
+            <div><label for="avg_check">Средний чек, ₽</label><input id="avg_check" type="number" step="any" value="700"></div>
+            <div><label for="peak_factor">Пиковый спрос, доля 0–1</label><input id="peak_factor" type="number" min="0" max="1" step="any" value="0.6" title="0.6 означает 60%"></div>
+            <div><label for="income_area">Индекс дохода района</label><input id="income_area" type="number" step="any" value="1.0" title="1.0 — средний доход; 1.4 — на 40% выше среднего"></div>
+            <div><label for="rent_cost">Индекс аренды, 0–1</label><input id="rent_cost" type="number" min="0" max="1" step="any" value="0.4" title="0 — низкая аренда, 1 — высокая; это не рубли за м²"></div>
+          </div>
+        </details>
+        <button id="submit" type="submit">Оценить локацию <span>→</span></button>
+        <div class="error" id="error" role="alert"></div>
+      </form>
+      <section class="card result" aria-live="polite">
+        <div class="empty" id="empty"><div><div class="empty-icon">✦</div><strong>Результат появится здесь</strong><span>Заполните координаты и запустите анализ</span></div></div>
+        <div class="result-content" id="result-content">
+          <div class="result-head"><div><p class="eyebrow">Анализ завершён</p><h2 id="cluster-name">—</h2></div><div class="score"><b id="score">—</b><span>из 10</span></div></div>
+          <div class="metrics"><div class="metric"><small>Прогноз спроса</small><b id="demand">—</b></div><div class="metric"><small>Перцентиль</small><b id="percentile">—</b></div><div class="metric"><small>ID кластера</small><b id="cluster-id">—</b></div></div>
+          <div class="recommendation"><h3>Рекомендация BusinessRadar</h3><p id="recommendation">—</p></div>
+        </div>
+      </section>
+    </section>
+  </main>
+  <script>
+    const form = document.querySelector("#predict-form");
+    const error = document.querySelector("#error");
+    const button = document.querySelector("#submit");
+    const fields = ["lat", "lon", "traffic", "pop_density", "competitors", "avg_check", "peak_factor", "income_area", "rent_cost"];
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      error.classList.remove("visible");
+      button.disabled = true;
+      button.textContent = "Анализируем...";
+      const payload = Object.fromEntries(fields.map((field) => [field, Number(document.querySelector("#" + field).value)]));
+      try {
+        const response = await fetch("/api/v1/predict", {
+          method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(payload)
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.detail || "Не удалось выполнить анализ");
+        document.querySelector("#empty").style.display = "none";
+        document.querySelector("#result-content").classList.add("visible");
+        document.querySelector("#score").textContent = data.score;
+        document.querySelector("#cluster-name").textContent = data.cluster_name;
+        document.querySelector("#demand").textContent = data.demand_forecast.toLocaleString("ru-RU");
+        document.querySelector("#percentile").textContent = Math.round(data.demand_percentile * 100) + "%";
+        document.querySelector("#cluster-id").textContent = "#" + data.cluster_id;
+        document.querySelector("#recommendation").textContent = data.recommendation_text;
+      } catch (requestError) {
+        error.textContent = requestError.message;
+        error.classList.add("visible");
+      } finally {
+        button.disabled = false;
+        button.innerHTML = "Оценить локацию <span>→</span>";
+      }
+    });
+  </script>
+</body>
+</html>

@@ -19,3 +19,11 @@ def test_validate_rejects_garbage():
         predict_location({"lat":0}); assert False
     except ValueError:
         pass
+
+
+def test_validate_rejects_non_finite_values():
+    try:
+        predict_location({**GOOD, "traffic": float("nan")})
+        assert False
+    except ValueError:
+        pass
