@@ -21,10 +21,16 @@ def train():
     Xg = df[GEO_COLS].values
     scaler = StandardScaler().fit(Xg)            # без скейла градусы зададут признаки
     Xs = scaler.transform(Xg)
+    silhouette_sample_size = min(2000, len(Xs))
     scores = {}
     for k in range(4, 13):
         km = KMeans(n_clusters=k, random_state=RANDOM_STATE, n_init=10).fit(Xs)
-        scores[k] = silhouette_score(Xs, km.labels_)
+        scores[k] = silhouette_score(
+            Xs,
+            km.labels_,
+            sample_size=silhouette_sample_size,
+            random_state=RANDOM_STATE,
+        )
     best_k = max(scores, key=scores.get)
     km = KMeans(n_clusters=best_k, random_state=RANDOM_STATE, n_init=10).fit(Xs)
     centers_geo = scaler.inverse_transform(km.cluster_centers_)
