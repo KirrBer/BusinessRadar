@@ -4,8 +4,8 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1
 WORKDIR /app
 
-COPY --from=ghcr.io/astral-sh/uv:0.8.15 /uv /uvx /bin/
 COPY pyproject.toml uv.lock ./
+RUN python -m pip install --no-cache-dir uv==0.8.15
 RUN uv sync --no-dev --no-install-project
 
 COPY ml_core ./ml_core

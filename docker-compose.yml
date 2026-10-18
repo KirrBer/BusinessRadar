@@ -13,12 +13,31 @@ services:
       timeout: 3s
       retries: 5
 
+  frontend:
+    build: ./frontend
+    expose:
+      - "3000"
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://127.0.0.1:3000').then((r) => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
   nginx:
     image: nginx:1.27-alpine
     depends_on:
       backend:
         condition: service_healthy
+      frontend:
+        condition: service_healthy
     ports:
       - "80:80"
     volumes:
-      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+      - type: bind
+        source: ./nginx/default.conf
+        target: /etc/nginx/conf.d/default.conf
+        read_only: true
