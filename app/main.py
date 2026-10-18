@@ -1,7 +1,4 @@
-from pathlib import Path
-
 from fastapi import FastAPI, HTTPException
-from fastapi.responses import FileResponse
 from pydantic import BaseModel, ConfigDict, Field
 
 from ml_core.inference import predict_location
@@ -50,12 +47,6 @@ class PredictionResponse(BaseModel):
 
 
 app = FastAPI(title="BusinessRadar API", version="0.1.0")
-STATIC_DIR = Path(__file__).resolve().parent / "static"
-
-
-@app.get("/", include_in_schema=False)
-def dashboard() -> FileResponse:
-    return FileResponse(STATIC_DIR / "index.html")
 
 
 @app.get("/health")

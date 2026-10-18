@@ -24,11 +24,10 @@ def test_health_check():
     assert response.json() == {"status": "ok"}
 
 
-def test_dashboard_is_available():
+def test_frontend_is_not_served_by_api():
     response = client.get("/")
 
-    assert response.status_code == 200
-    assert "BusinessRadar" in response.text
+    assert response.status_code == 404
 
 
 def test_predict_returns_prediction(monkeypatch):
