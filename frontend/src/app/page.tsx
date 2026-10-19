@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import dynamic from "next/dynamic";
 
-import type { DistrictCollection, DistrictProperties } from "@/lib/districts";
+import type { DistrictCollection, DistrictProperties } from "../lib/districts";
 
 const DistrictMap = dynamic(() => import("./DistrictMap"), { ssr: false });
 

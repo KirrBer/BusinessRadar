@@ -4,7 +4,7 @@ import { useMemo } from "react";
 import L from "leaflet";
 import { GeoJSON, MapContainer, TileLayer } from "react-leaflet";
 
-import type { DistrictCollection, DistrictFeature } from "@/lib/districts";
+import type { DistrictCollection, DistrictFeature } from "../lib/districts";
 
 type DistrictMapProps = {
   data: DistrictCollection;
