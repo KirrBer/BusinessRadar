@@ -49,20 +49,12 @@ h1, h2, h3, p { margin: 0; }
 .panel-heading, .result-heading { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px 12px; }
 .legend { display: flex; align-items: center; gap: 8px; color: var(--muted); font: 500 9px var(--mono); }
 .legend i { width: 72px; height: 7px; border: 1px solid var(--line); border-radius: 4px; background: linear-gradient(90deg, var(--surface-2), var(--accent)); }
-.district-map { display: block; width: min(100%, 410px); height: auto; margin: -6px auto; overflow: visible; }
-.map-ring { fill: none; stroke: var(--muted); stroke-width: 1; stroke-dasharray: 3 5; opacity: .7; }
-.map-mkad { fill: var(--muted); font: 500 11px var(--mono); letter-spacing: 1px; text-anchor: middle; }
-.district-shape { cursor: pointer; outline: none; } .district-base { fill: var(--surface-2); }
-.district-heat { fill: var(--accent); transition: opacity .25s; }
-.district-outline { fill: none; stroke: var(--surface); stroke-width: 3; }
-.district-shape:hover .district-outline { stroke: var(--muted); }
-.district-shape[aria-pressed="true"] .district-outline { stroke: var(--ink); stroke-width: 4; }
-.district-shape:focus-visible .district-outline { stroke: var(--accent); stroke-width: 5; }
-.map-pill { fill: var(--surface); stroke: var(--line); stroke-width: 1; }
-.map-label { fill: var(--ink); font: 600 14px var(--body); text-anchor: middle; dominant-baseline: central; pointer-events: none; }
-.map-score { fill: var(--accent); font: 500 13px var(--mono); }
-.district-shape[aria-pressed="true"] .map-pill { fill: var(--ink); stroke: var(--ink); }
-.district-shape[aria-pressed="true"] .map-label, .district-shape[aria-pressed="true"] .map-score { fill: var(--bg); }
+.map-frame { overflow: hidden; border: 1px solid var(--line); border-radius: 8px; }
+.district-map { display: block; width: 100%; height: 420px; min-height: 320px; background: var(--surface-2); }
+.district-tooltip { border-color: var(--line); border-radius: 5px; color: var(--ink); font: 600 12px var(--body); }
+.leaflet-container { font-family: var(--body); }
+.leaflet-container .leaflet-control-attribution { font: 9px var(--mono); }
+.map-loading { display: grid; min-height: 320px; place-items: center; padding: 20px; color: var(--muted); }
 .picked { font-size: 14px; }
 .top-districts, .field-groups, .field-group { display: flex; flex-direction: column; gap: 12px; }
 .top-districts ol { display: flex; flex-wrap: wrap; gap: 7px; margin: 0; padding: 0; list-style: none; }
@@ -135,7 +127,7 @@ h1, h2, h3, p { margin: 0; }
 .footnote { max-width: 90ch; color: var(--muted); font: 11px/1.55 var(--mono); }
 .toast { position: fixed; z-index: 5; bottom: max(16px, env(safe-area-inset-bottom)); left: 50%; max-width: calc(100% - 32px); transform: translateX(-50%); padding: 11px 16px; border-radius: 8px; background: var(--ink); color: var(--bg); font-size: 13px; box-shadow: 0 8px 24px #0d243033; }
 @keyframes sweep { to { transform: rotate(360deg); } } @keyframes enter { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
-@media (max-width: 880px) { .dashboard-grid { grid-template: "map" auto "result" auto "params" auto / minmax(0, 1fr); } .district-map { width: min(100%, 390px); } }
+@media (max-width: 880px) { .dashboard-grid { grid-template: "map" auto "result" auto "params" auto / minmax(0, 1fr); } }
 @media (max-width: 540px) {
   body { padding-top: 14px; } .page { gap: 20px; } .intro h1 { font-size: 26px; } .panel { padding: 17px; }
   .metrics { gap: 12px; } .metric-value { font-size: 21px; } .saved-row { gap: 8px 12px; padding: 12px; }
