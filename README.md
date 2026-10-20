@@ -44,9 +44,32 @@ npm run dev
 | `income_area` | Индекс дохода относительно среднего: `1.0` — средний |
 | `rent_cost` | Нормализованный индекс аренды от 0 до 1, не рубли за м² |
 
-Сейчас сервис работает на синтетических данных. Поэтому трафик, плотность,
-конкуренты, доход и аренда являются модельными оценками; они не подтягиваются
-автоматически из карт или банковских транзакций.
+Обучение по умолчанию использует реальные выгрузки из каталога
+`BUSINESSRADAR_DATA_DIR` (по умолчанию `data`). Синтетический режим теперь
+является только явным demo-режимом: `uv run python -m ml_core.train_rf --demo`.
+
+### Схема выгрузок
+
+ETL в `ml_core/data_pipeline.py` объединяет данные по `location_id`:
+
+* `addresses.csv`: `location_id`, `lat`, `lon` (справочник адресов);
+* `area_metrics.csv`: `location_id`, `traffic`, `pop_density` и, опционально,
+  `competitors`, `income_area`, `rent_cost`;
+* `competitors.csv`: `location_id`, `competitors` (если конкуренты пришли
+  отдельной выгрузкой);
+* `property_metrics.csv`: `location_id`, `rent_per_sqm`, `income_area`
+  (данные баз недвижимости и банка; `rent_cost` нормализуется по выгрузке);
+* `transactions.csv`: `location_id`, `amount`, `transaction_at` (агрегаты
+  эквайринга: `avg_check`, дневной `demand` и `peak_factor` считаются в ETL).
+
+Таким образом, адаптеры 2GIS/Росстата, парсер Яндекс.Карт и выгрузки ЦИАН/
+Авито должны только записать эти колонки. Обучение реальными данными:
+
+```sh
+$env:BUSINESSRADAR_DATA_DIR = "C:\data\businessradar"
+uv run python -m ml_core.train_rf
+uv run python -m ml_core.train_kmeans
+```
 
 ## Тесты
 

@@ -10,8 +10,8 @@ RUN uv sync --no-dev --no-install-project
 
 COPY ml_core ./ml_core
 COPY app ./app
-RUN uv run --no-sync python -m ml_core.train_rf \
-    && uv run --no-sync python -m ml_core.train_kmeans
+RUN uv run --no-sync python -m ml_core.train_rf --demo \
+    && uv run --no-sync python -m ml_core.train_kmeans --demo
 
 EXPOSE 8000
 CMD ["uv", "run", "--no-sync", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
