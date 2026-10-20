@@ -13,10 +13,10 @@ docker compose up --build
 Для локальной разработки запустите backend в первом терминале:
 
 ```sh
-uv sync --group dev
-uv run python -m ml_core.train_rf
-uv run python -m ml_core.train_kmeans
-uv run uvicorn app.main:app --reload --port 8000
+uv sync --group dev --no-install-project
+uv run --no-sync python -m ml_core.train_rf
+uv run --no-sync python -m ml_core.train_kmeans
+uv run --no-sync uvicorn app.main:app --reload --port 8000
 ```
 
 Во втором терминале запустите Next.js:
@@ -37,7 +37,7 @@ npm run dev
 | --- | --- |
 | `lat`, `lon` | Географические координаты в градусах |
 | `traffic` | Условная оценка потенциальных посетителей в день |
-| `pop_density` | Жители на км² |
+| `pop_density` | Синтетический индекс плотности района, не официальная статистика |
 | `competitors` | Условное число конкурентов в зоне анализа |
 | `avg_check` | Средний чек в рублях |
 | `peak_factor` | Доля пикового спроса от 0 до 1 |
@@ -71,15 +71,24 @@ uv run python -m ml_core.train_rf
 uv run python -m ml_core.train_kmeans
 ```
 
+Карта показывает реальные границы 18 районов Санкт-Петербурга из OpenStreetMap.
+Атрибуция и условия ODbL указаны под картой и в локальном GeoJSON. Для обновления
+границ используйте `uv run --no-project --with shapely python -m scripts.fetch_spb_boundaries`.
+
+При запуске в demo-режиме сервис использует синтетические данные, сгенерированные
+внутри полигонов этих районов. В этом режиме трафик, плотность, конкуренты, доход
+и аренда — модельные оценки; они не подтягиваются автоматически из карт или
+банковских транзакций.
+
 ## Тесты
 
 Для проверки нужны установленные зависимости и обученные модели:
 
 ```sh
-uv sync --group dev
-uv run python -m ml_core.train_rf
-uv run python -m ml_core.train_kmeans
-uv run pytest -q
+uv sync --group dev --no-install-project
+uv run --no-sync python -m ml_core.train_rf
+uv run --no-sync python -m ml_core.train_kmeans
+uv run --no-sync pytest -q
 ```
 
 GitHub Actions запускает ML-тесты, ESLint и production build Next.js при push и pull request.

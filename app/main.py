@@ -1,6 +1,7 @@
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, ConfigDict, Field
 
+from ml_core.districts import district_feature_collection
 from ml_core.inference import predict_location
 
 
@@ -52,6 +53,11 @@ app = FastAPI(title="BusinessRadar API", version="0.1.0")
 @app.get("/health")
 def health() -> dict[str, str]:
     return {"status": "ok"}
+
+
+@app.get("/api/v1/districts")
+def districts() -> dict:
+    return district_feature_collection()
 
 
 @app.post("/api/v1/predict", response_model=PredictionResponse)

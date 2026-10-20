@@ -5,10 +5,10 @@ from app import main
 
 client = TestClient(main.app)
 FEATURES = {
-    "lat": 55.75,
-    "lon": 37.62,
+    "lat": 59.934,
+    "lon": 30.335,
     "traffic": 900,
-    "pop_density": 8000,
+    "pop_density": 300,
     "competitors": 1,
     "avg_check": 700,
     "peak_factor": 0.6,
@@ -22,6 +22,17 @@ def test_health_check():
 
     assert response.status_code == 200
     assert response.json() == {"status": "ok"}
+
+
+def test_district_geojson_contains_all_spb_districts():
+    response = client.get("/api/v1/districts")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["license"] == "ODbL-1.0"
+    assert len(data["features"]) == 18
+    assert all(feature["geometry"]["type"] in {"Polygon", "MultiPolygon"} for feature in data["features"])
+    assert {feature["properties"]["name"] for feature in data["features"]} >= {"Центральный район", "Петроградский район"}
 
 
 def test_frontend_is_not_served_by_api():
