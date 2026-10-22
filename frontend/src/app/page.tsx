@@ -1,6 +1,11 @@
 "use client";
 
 import { useEffect, useRef, useState, type CSSProperties } from "react";
+import dynamic from "next/dynamic";
+
+import type { DistrictCollection, DistrictProperties } from "@/my_lib/districts";
+
+const DistrictMap = dynamic(() => import("./DistrictMap"), { ssr: false });
 
 type Features = {
   lat: number; lon: number; traffic: number; pop_density: number; competitors: number;
@@ -10,27 +15,12 @@ type Prediction = {
   score: number; demand_forecast: number; demand_percentile: number;
   cluster_name: string; recommendation_text: string;
 };
-type District = {
-  id: string; short: string; name: string; angle: number | null; lat: number; lon: number;
-  values: Pick<Features, "traffic" | "pop_density" | "competitors" | "income_area" | "rent_cost">;
-};
+type District = DistrictProperties;
 type Saved = { id: number; name: string; district: string | null; features: Features; result: Prediction; tag?: string; time?: string };
 type Field = {
   group: "point" | "area"; key: keyof Features; label: string; unit: string;
   min: number; max: number; step: number; hint: string;
 };
-
-const DISTRICTS: District[] = [
-  { id: "c", short: "Центр", name: "Центральный округ", angle: null, lat: 55.755, lon: 37.62, values: { traffic: 1200, pop_density: 170, competitors: 8, income_area: 1.5, rent_cost: 0.95 } },
-  { id: "n", short: "С", name: "Северный округ", angle: -90, lat: 55.86, lon: 37.57, values: { traffic: 420, pop_density: 150, competitors: 3, income_area: 1, rent_cost: 0.45 } },
-  { id: "ne", short: "СВ", name: "Северо-Восточный округ", angle: -45, lat: 55.86, lon: 37.68, values: { traffic: 380, pop_density: 160, competitors: 3, income_area: 0.85, rent_cost: 0.4 } },
-  { id: "e", short: "В", name: "Восточный округ", angle: 0, lat: 55.78, lon: 37.76, values: { traffic: 340, pop_density: 150, competitors: 2, income_area: 0.8, rent_cost: 0.3 } },
-  { id: "se", short: "ЮВ", name: "Юго-Восточный округ", angle: 45, lat: 55.71, lon: 37.72, values: { traffic: 300, pop_density: 140, competitors: 2, income_area: 0.75, rent_cost: 0.25 } },
-  { id: "s", short: "Ю", name: "Южный округ", angle: 90, lat: 55.7, lon: 37.62, values: { traffic: 360, pop_density: 145, competitors: 3, income_area: 0.85, rent_cost: 0.35 } },
-  { id: "sw", short: "ЮЗ", name: "Юго-Западный округ", angle: 135, lat: 55.71, lon: 37.52, values: { traffic: 450, pop_density: 150, competitors: 4, income_area: 1.25, rent_cost: 0.55 } },
-  { id: "w", short: "З", name: "Западный округ", angle: 180, lat: 55.76, lon: 37.51, values: { traffic: 520, pop_density: 140, competitors: 4, income_area: 1.35, rent_cost: 0.6 } },
-  { id: "nw", short: "СЗ", name: "Северо-Западный округ", angle: -135, lat: 55.82, lon: 37.51, values: { traffic: 330, pop_density: 120, competitors: 2, income_area: 1, rent_cost: 0.4 } },
-];
 
 const FIELDS: Field[] = [
   { group: "point", key: "avg_check", label: "Средний чек", unit: "₽", min: 200, max: 2000, step: 10, hint: "Ожидаемый чек в вашем формате." },
@@ -44,12 +34,22 @@ const FIELDS: Field[] = [
 
 const QUANTILES = [14.18, 23.21, 25.59, 26.97, 27.79, 28.65, 29.38, 30.01, 30.64, 31.13, 31.7, 32.21, 32.69, 33.21, 33.62, 34.14, 34.58, 35.01, 35.34, 35.71, 36.14, 36.48, 36.88, 37.19, 37.52, 37.81, 38.15, 38.45, 38.82, 39.18, 39.49, 39.84, 40.23, 40.54, 40.81, 41.05, 41.37, 41.73, 41.99, 42.28, 42.56, 42.84, 43.07, 43.41, 43.67, 43.96, 44.2, 44.5, 44.76, 45.05, 45.37, 45.61, 45.88, 46.13, 46.42, 46.73, 47.1, 47.38, 47.75, 48.09, 48.4, 48.75, 49.07, 49.37, 49.76, 50.13, 50.53, 51, 51.36, 51.79, 52.24, 52.71, 53.16, 53.69, 54.21, 54.61, 55.18, 55.8, 56.35, 56.72, 57.48, 58.13, 58.77, 59.44, 60.16, 60.77, 61.47, 62.43, 63.11, 64.07, 64.82, 66.04, 67.09, 68.36, 69.7, 71.08, 72.95, 75.45, 77.93, 82.99, 124.16];
 const DEFAULT_POINT = { avg_check: 650, peak_factor: 0.3 };
+const DEMO_BENCHMARKS = { pop_density: 205, income_area: 1.01, traffic: 470 };
 const numberFormat = new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 2 });
 const format = (value: number) => numberFormat.format(value);
-const districtFor = (id: string | null) => DISTRICTS.find((district) => district.id === id);
+const districtFor = (districts: District[], id: string | null) => districts.find((district) => district.id === id);
 
 function featuresFor(district: District, point = DEFAULT_POINT): Features {
-  return { lat: district.lat, lon: district.lon, ...district.values, ...point };
+  return {
+    lat: district.center.lat,
+    lon: district.center.lon,
+    traffic: district.traffic,
+    pop_density: district.pop_density,
+    competitors: district.competitors,
+    income_area: district.income_area,
+    rent_cost: district.rent_cost,
+    ...point,
+  };
 }
 
 function demoPredict(features: Features): Prediction {
@@ -63,7 +63,7 @@ function demoPredict(features: Features): Prediction {
   }
   const percentile = low / QUANTILES.length;
   const score = Math.max(1, Math.min(10, Math.round(percentile * 9 + 1)));
-  const cluster = `${features.pop_density > 136.24 ? "плотный" : "спальный"}·${features.income_area > 0.88 ? "платёж." : "эконом"}·${features.traffic > 389.75 ? "трафик." : "локальный"}`;
+  const cluster = `${features.pop_density > DEMO_BENCHMARKS.pop_density ? "плотный" : "спальный"}·${features.income_area > DEMO_BENCHMARKS.income_area ? "платёж." : "эконом"}·${features.traffic > DEMO_BENCHMARKS.traffic ? "трафик." : "локальный"}`;
   const demandBand = percentile >= 0.7 ? "высокий" : percentile >= 0.35 ? "средний" : "низкий";
   const competition = features.competitors >= 5 ? "много" : features.competitors >= 2 ? "умеренно" : "мало";
   const advice = percentile >= 0.7
@@ -97,15 +97,6 @@ function prettyCluster(name: string) {
   const labels: Record<string, string> = { плотный: "Плотный", спальный: "Спальный", "платёж.": "платёжеспособный", эконом: "эконом-сегмент", "трафик.": "проходной", локальный: "локальный" };
   return name.split("·").map((part) => labels[part.trim()] ?? part.trim()).join(" · ");
 }
-function mapPoint(radius: number, degrees: number): [number, number] {
-  const radians = degrees * Math.PI / 180;
-  return [250 + radius * Math.cos(radians), 250 + radius * Math.sin(radians)];
-}
-function sectorPath(start: number, end: number) {
-  const [x1, y1] = mapPoint(215, start); const [x2, y2] = mapPoint(215, end);
-  const [x3, y3] = mapPoint(70, end); const [x4, y4] = mapPoint(70, start);
-  return `M${x1} ${y1} A215 215 0 0 1 ${x2} ${y2} L${x3} ${y3} A70 70 0 0 0 ${x4} ${y4} Z`;
-}
 function gaugeArc(radius: number, start: number, end: number) {
   const point = (degrees: number) => {
     const radians = degrees * Math.PI / 180;
@@ -114,25 +105,57 @@ function gaugeArc(radius: number, start: number, end: number) {
   return `M${point(start)} A${radius} ${radius} 0 0 1 ${point(end)}`;
 }
 
-const initialFeatures = featuresFor(DISTRICTS.find((district) => district.id === "n")!);
-const initialSaved: Saved[] = ["c", "w", "se"].map((id, index) => {
-  const district = districtFor(id)!; const features = featuresFor(district);
-  return { id: index + 1, name: district.name, district: id, features, result: demoPredict(features), tag: "пример" };
-});
+const initialFeatures: Features = {
+  lat: 59.934, lon: 30.335, traffic: 520, pop_density: 250, competitors: 4,
+  avg_check: DEFAULT_POINT.avg_check, peak_factor: DEFAULT_POINT.peak_factor,
+  income_area: 1, rent_cost: 0.65,
+};
 
 export default function Home() {
   const [features, setFeatures] = useState(initialFeatures);
-  const [selectedDistrict, setSelectedDistrict] = useState<string | null>("n");
+  const [districtData, setDistrictData] = useState<DistrictCollection | null>(null);
+  const [districts, setDistricts] = useState<District[]>([]);
+  const [selectedDistrict, setSelectedDistrict] = useState<string | null>(null);
   const [mode, setMode] = useState<"demo" | "api">("demo");
   const [apiUrl, setApiUrl] = useState("/api/v1/predict");
   const [result, setResult] = useState<Prediction | null>(() => demoPredict(initialFeatures));
-  const [heat, setHeat] = useState<Record<string, number>>(() => Object.fromEntries(DISTRICTS.map((district) => [district.id, demoPredict(featuresFor(district)).score])));
-  const [saved, setSaved] = useState(initialSaved);
+  const [heat, setHeat] = useState<Record<string, number>>({});
+  const [saved, setSaved] = useState<Saved[]>([]);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState("");
-  const nextId = useRef(4);
+  const nextId = useRef(1);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    fetch("/api/v1/districts", { signal: controller.signal })
+      .then((response) => {
+        if (!response.ok) throw new Error("Не удалось загрузить районы города.");
+        return response.json() as Promise<DistrictCollection>;
+      })
+      .then((data) => {
+        const districtFeatures = data.features.map((feature) => feature.properties);
+        const central = districtFeatures.find((district) => district.id === "cen") ?? districtFeatures[0];
+        if (!central) throw new Error("В наборе геоданных нет районов.");
+        setDistrictData(data);
+        setDistricts(districtFeatures);
+        setSelectedDistrict(central.id);
+        setFeatures(featuresFor(central, DEFAULT_POINT));
+        setHeat(Object.fromEntries(districtFeatures.map((district) => [district.id, demoPredict(featuresFor(district)).score])));
+        setSaved(["cen", "pet", "mos"].flatMap((id, index) => {
+          const district = districtFeatures.find((item) => item.id === id);
+          if (!district) return [];
+          const features = featuresFor(district);
+          return [{ id: index + 1, name: district.name, district: id, features, result: demoPredict(features), tag: "пример" }];
+        }));
+        nextId.current = 4;
+      })
+      .catch((cause: unknown) => {
+        if (!controller.signal.aborted) setError(cause instanceof Error ? cause.message : "Не удалось загрузить районы.");
+      });
+    return () => controller.abort();
+  }, []);
 
   useEffect(() => {
     let active = true; const controller = new AbortController();
@@ -149,11 +172,12 @@ export default function Home() {
   }, [features, mode, apiUrl]);
 
   useEffect(() => {
+    if (!districts.length) return;
     let active = true; const controller = new AbortController();
     const timer = setTimeout(async () => {
       const base = { avg_check: features.avg_check, peak_factor: features.peak_factor };
       try {
-        const scores = await Promise.all(DISTRICTS.map(async (district) => {
+        const scores = await Promise.all(districts.map(async (district) => {
           const current = featuresFor(district, base);
           const value = mode === "api" ? await predict(current, apiUrl, controller.signal) : demoPredict(current);
           return [district.id, value.score] as const;
@@ -162,7 +186,7 @@ export default function Home() {
       } catch { if (active) setHeat({}); }
     }, mode === "api" ? 450 : 120);
     return () => { active = false; clearTimeout(timer); controller.abort(); };
-  }, [features.avg_check, features.peak_factor, mode, apiUrl]);
+  }, [districts, features.avg_check, features.peak_factor, mode, apiUrl]);
 
   useEffect(() => () => { if (toastTimer.current) clearTimeout(toastTimer.current); }, []);
 
@@ -171,16 +195,19 @@ export default function Home() {
     toastTimer.current = setTimeout(() => setToast(""), 2600);
   }
   function chooseDistrict(id: string) {
-    const district = districtFor(id); if (!district) return;
+    const district = districtFor(districts, id); if (!district) return;
     setSelectedDistrict(id);
     setFeatures((current) => featuresFor(district, { avg_check: current.avg_check, peak_factor: current.peak_factor }));
   }
   function reset() {
-    chooseDistrict("n"); setFeatures(featuresFor(districtFor("n")!, DEFAULT_POINT));
+    const district = districtFor(districts, "cen") ?? districts[0];
+    if (!district) return;
+    chooseDistrict(district.id);
+    setFeatures(featuresFor(district, DEFAULT_POINT));
   }
   function saveCalculation() {
     if (!result || loading || error) return;
-    const district = districtFor(selectedDistrict); const name = district?.name ?? `Своя точка ${nextId.current - 3}`;
+    const district = districtFor(districts, selectedDistrict); const name = district?.name ?? `Своя точка ${nextId.current - 3}`;
     const time = new Date().toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" });
     setSaved((current) => [{ id: nextId.current++, name, district: selectedDistrict, features: { ...features }, result: { ...result }, time }, ...current]);
     notify(`Расчёт сохранён: ${name}`);
@@ -190,8 +217,8 @@ export default function Home() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
-  const selected = districtFor(selectedDistrict);
-  const ranked = DISTRICTS.filter((district) => typeof heat[district.id] === "number").sort((a, b) => (heat[b.id] ?? 0) - (heat[a.id] ?? 0)).slice(0, 3);
+  const selected = districtFor(districts, selectedDistrict);
+  const ranked = districts.filter((district) => typeof heat[district.id] === "number").sort((a, b) => (heat[b.id] ?? 0) - (heat[a.id] ?? 0)).slice(0, 3);
   const percentile = result ? Math.round(result.demand_percentile * 100) : 0;
   const currentLevel = result ? scoreLevel(result.score) : "warn";
 
@@ -209,27 +236,18 @@ export default function Home() {
       </header>
 
       {mode === "api" && <div className="api-row"><label htmlFor="api-url">Адрес метода</label><input id="api-url" value={apiUrl} onChange={(event) => setApiUrl(event.target.value)} spellCheck={false} /><p>POST-запрос к модели проекта. Через Nginx адрес работает без дополнительных настроек.</p></div>}
-      <section className="intro" id="top"><p className="eyebrow">АНАЛИТИКА ЛОКАЦИЙ · МОСКВА</p><h1>Выберите район для новой точки</h1><p>Оцените потенциал места по спросу, окружению и экономике. Выберите район на схеме или уточните параметры вручную.</p></section>
+      <section className="intro" id="top"><p className="eyebrow">АНАЛИТИКА ЛОКАЦИЙ · САНКТ-ПЕТЕРБУРГ</p><h1>Выберите район для новой точки</h1><p>Оцените потенциал места по спросу, окружению и экономике. Выберите район на карте или уточните параметры вручную.</p></section>
       <nav className="tabs" aria-label="Задачи сервиса"><button className="tab active" type="button" aria-current="page">Где открыть точку</button><button className="tab" type="button" disabled>Прогноз спроса <span>скоро</span></button><button className="tab" type="button" disabled>Ассортимент <span>скоро</span></button></nav>
 
       <div className="dashboard-grid">
         <section className="panel map-panel" aria-labelledby="map-title">
           <div className="panel-heading"><h2 className="section-label" id="map-title">Районы города</h2><div className="legend" aria-hidden="true"><span>НИЖЕ</span><i /><span>ВЫШЕ</span></div></div>
-          <svg className="district-map" viewBox="0 0 500 500" role="group" aria-label="Схема районов Москвы">
-            <circle className="map-ring" cx="250" cy="250" r="226" /><text className="map-mkad" x="250" y="14">МКАД</text>
-            {DISTRICTS.map((district) => {
-              const path = district.angle === null ? "M180 250a70 70 0 1 0 140 0a70 70 0 1 0-140 0" : sectorPath(district.angle - 22.5, district.angle + 22.5);
-              const [x, y] = district.angle === null ? [250, 250] : mapPoint(143, district.angle);
-              const score = heat[district.id]; const width = district.short.length * 10.5 + 42;
-              return <g className="district-shape" key={district.id} role="button" tabIndex={0} aria-pressed={selectedDistrict === district.id} aria-label={`${district.name}${typeof score === "number" ? `, оценка ${score} из 10` : ""}`} onClick={() => chooseDistrict(district.id)} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); chooseDistrict(district.id); } }}>
-                <title>{district.name}</title><path className="district-base" d={path} /><path className="district-heat" d={path} style={{ opacity: typeof score === "number" ? 0.08 + 0.092 * score : 0 }} /><path className="district-outline" d={path} />
-                <rect className="map-pill" x={x - width / 2} y={y - 15} width={width} height="30" rx="15" /><text className="map-label" x={x} y={y + 1}>{district.short}<tspan className="map-score"> {typeof score === "number" ? score : "–"}</tspan></text>
-              </g>;
-            })}
-          </svg>
+          <div className="map-frame">
+            {districtData ? <DistrictMap data={districtData} selectedId={selectedDistrict} scores={heat} onSelect={chooseDistrict} /> : <div className="map-loading">Загружаем карту районов Санкт-Петербурга…</div>}
+          </div>
           <p className="picked" aria-live="polite">{selected ? <>Выбрано: <strong>{selected.name}</strong></> : "Своя точка"}</p>
           <div className="top-districts"><h3 className="section-label">Лучшие районы сейчас</h3><ol>{ranked.length ? ranked.map((district, index) => <li key={district.id}><button type="button" onClick={() => chooseDistrict(district.id)}><span>{index + 1}</span>{district.name.replace(" округ", "")}<b>{heat[district.id]}/10</b></button></li>) : <li className="muted">Оценки районов недоступны.</li>}</ol></div>
-          <p className="map-note">Схема показывает типовые оценки, а не точные административные границы.</p>
+          <p className="map-note">Границы районов: OpenStreetMap, ODbL 1.0. Оценки спроса и показатели районов в демо-режиме синтетические.</p>
         </section>
 
         <section className="panel parameters-panel" aria-labelledby="form-title">

@@ -5,7 +5,7 @@ description = "Add your description here"
 authors = [
     { name = "egor", email = "egorlisovoj6@gmail.com" }
 ]
-requires-python = ">=3.13"
+requires-python = ">=3.13,<3.15"
 dependencies = [
     "fastapi>=0.115.0",
     "joblib>=1.6.0",
@@ -13,15 +13,16 @@ dependencies = [
     "pandas>=3.0.6",
     "plotly>=7.1.0",
     "scikit-learn>=1.9.1",
+    "shapely>=2.0.0",
     "uvicorn[standard]>=0.34.0",
 ]
-
-[project.scripts]
-businessradar = "businessradar:main"
 
 [build-system]
 requires = ["uv_build>=0.12.18,<0.13.0"]
 build-backend = "uv_build"
+
+[tool.uv]
+package = false
 
 [tool.pytest.ini_options]
 pythonpath = ["."]

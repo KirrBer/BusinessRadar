@@ -218,4 +218,5 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
-ml_core/artifacts/*.joblib
+ml_core/artifacts/
+data/
