@@ -24,6 +24,7 @@ def train(data_dir=None, demo=False):
     pred = pipe.predict(Xte)
     report = {"mae": round(float(mean_absolute_error(yte, pred)), 3),
               "r2":  round(float(r2_score(yte, pred)), 3),
+               "source": "synthetic" if demo else "pipeline",
               "feature_importance": dict(zip(FEATURE_COLS,
                   np.round(pipe.named_steps["rf"].feature_importances_, 4)))}
     joblib.dump(pipe, ARTIFACTS / "rf_demand.joblib")
