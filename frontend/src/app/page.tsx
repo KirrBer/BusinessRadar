@@ -16,6 +16,15 @@ type Prediction = {
   cluster_name: string; recommendation_text: string;
 };
 type District = DistrictProperties;
+type MeasuredDistrict = District & {
+  traffic: number;
+  pop_density: number;
+  competitors: number;
+  avg_check: number;
+  peak_factor: number;
+  income_area: number;
+  rent_cost: number;
+};
 type Saved = { id: number; name: string; district: string | null; features: Features; result: Prediction; tag?: string; time?: string };
 type Field = {
   group: "point" | "area"; key: keyof Features; label: string; unit: string;
@@ -39,7 +48,8 @@ const numberFormat = new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 2 }
 const format = (value: number) => numberFormat.format(value);
 const districtFor = (districts: District[], id: string | null) => districts.find((district) => district.id === id);
 
-function featuresFor(district: District, point = DEFAULT_POINT): Features {
+function featuresFor(district: District, point = DEFAULT_POINT): Features | null {
+  if (!hasRealMetrics(district)) return null;
   return {
     lat: district.center.lat,
     lon: district.center.lon,
@@ -105,20 +115,26 @@ function gaugeArc(radius: number, start: number, end: number) {
   return `M${point(start)} A${radius} ${radius} 0 0 1 ${point(end)}`;
 }
 
-const initialFeatures: Features = {
-  lat: 59.934, lon: 30.335, traffic: 520, pop_density: 250, competitors: 4,
-  avg_check: DEFAULT_POINT.avg_check, peak_factor: DEFAULT_POINT.peak_factor,
-  income_area: 1, rent_cost: 0.65,
-};
+function hasRealMetrics(district: District): district is MeasuredDistrict {
+  return district.sample_count > 0 && [
+    district.traffic,
+    district.pop_density,
+    district.competitors,
+    district.avg_check,
+    district.peak_factor,
+    district.income_area,
+    district.rent_cost,
+  ].every((value) => typeof value === "number" && Number.isFinite(value));
+}
 
 export default function Home() {
-  const [features, setFeatures] = useState(initialFeatures);
+  const [features, setFeatures] = useState<Features | null>(null);
   const [districtData, setDistrictData] = useState<DistrictCollection | null>(null);
   const [districts, setDistricts] = useState<District[]>([]);
   const [selectedDistrict, setSelectedDistrict] = useState<string | null>(null);
-  const [mode, setMode] = useState<"demo" | "api">("demo");
+  const [mode, setMode] = useState<"demo" | "api">("api");
   const [apiUrl, setApiUrl] = useState("/api/v1/predict");
-  const [result, setResult] = useState<Prediction | null>(() => demoPredict(initialFeatures));
+  const [result, setResult] = useState<Prediction | null>(null);
   const [heat, setHeat] = useState<Record<string, number>>({});
   const [saved, setSaved] = useState<Saved[]>([]);
   const [error, setError] = useState("");
@@ -136,20 +152,20 @@ export default function Home() {
       })
       .then((data) => {
         const districtFeatures = data.features.map((feature) => feature.properties);
-        const central = districtFeatures.find((district) => district.id === "cen") ?? districtFeatures[0];
-        if (!central) throw new Error("В наборе геоданных нет районов.");
+        const central = districtFeatures.find((district) => district.id === "cen" && hasRealMetrics(district))
+          ?? districtFeatures.find(hasRealMetrics);
         setDistrictData(data);
         setDistricts(districtFeatures);
+        setHeat({});
+        setSaved([]);
+        if (!central) {
+          setError("В реальных данных нет точек внутри районов Санкт-Петербурга.");
+          return;
+        }
         setSelectedDistrict(central.id);
         setFeatures(featuresFor(central, DEFAULT_POINT));
-        setHeat(Object.fromEntries(districtFeatures.map((district) => [district.id, demoPredict(featuresFor(district)).score])));
-        setSaved(["cen", "pet", "mos"].flatMap((id, index) => {
-          const district = districtFeatures.find((item) => item.id === id);
-          if (!district) return [];
-          const features = featuresFor(district);
-          return [{ id: index + 1, name: district.name, district: id, features, result: demoPredict(features), tag: "пример" }];
-        }));
-        nextId.current = 4;
+        setError("");
+        nextId.current = 1;
       })
       .catch((cause: unknown) => {
         if (!controller.signal.aborted) setError(cause instanceof Error ? cause.message : "Не удалось загрузить районы.");
@@ -158,6 +174,7 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
+    if (!features || !selectedDistrict) return;
     let active = true; const controller = new AbortController();
     const timer = setTimeout(async () => {
       setLoading(mode === "api"); setError("");
@@ -169,16 +186,19 @@ export default function Home() {
       } finally { if (active) setLoading(false); }
     }, mode === "api" ? 350 : 100);
     return () => { active = false; clearTimeout(timer); controller.abort(); };
-  }, [features, mode, apiUrl]);
+  }, [features, mode, apiUrl, selectedDistrict]);
 
   useEffect(() => {
-    if (!districts.length) return;
+    if (!districts.length || !features) return;
     let active = true; const controller = new AbortController();
     const timer = setTimeout(async () => {
       const base = { avg_check: features.avg_check, peak_factor: features.peak_factor };
       try {
-        const scores = await Promise.all(districts.map(async (district) => {
+        const candidates = districts.flatMap((district) => {
           const current = featuresFor(district, base);
+          return current ? [{ district, features: current }] : [];
+        });
+        const scores = await Promise.all(candidates.map(async ({ district, features: current }) => {
           const value = mode === "api" ? await predict(current, apiUrl, controller.signal) : demoPredict(current);
           return [district.id, value.score] as const;
         }));
@@ -186,7 +206,7 @@ export default function Home() {
       } catch { if (active) setHeat({}); }
     }, mode === "api" ? 450 : 120);
     return () => { active = false; clearTimeout(timer); controller.abort(); };
-  }, [districts, features.avg_check, features.peak_factor, mode, apiUrl]);
+  }, [districts, features, mode, apiUrl]);
 
   useEffect(() => () => { if (toastTimer.current) clearTimeout(toastTimer.current); }, []);
 
@@ -196,17 +216,25 @@ export default function Home() {
   }
   function chooseDistrict(id: string) {
     const district = districtFor(districts, id); if (!district) return;
+    const nextFeatures = featuresFor(district, {
+      avg_check: features?.avg_check ?? DEFAULT_POINT.avg_check,
+      peak_factor: features?.peak_factor ?? DEFAULT_POINT.peak_factor,
+    });
+    if (!nextFeatures) return;
     setSelectedDistrict(id);
-    setFeatures((current) => featuresFor(district, { avg_check: current.avg_check, peak_factor: current.peak_factor }));
+    setFeatures(nextFeatures);
   }
   function reset() {
-    const district = districtFor(districts, "cen") ?? districts[0];
+    const central = districtFor(districts, "cen");
+    const district = central && hasRealMetrics(central) ? central : districts.find(hasRealMetrics);
     if (!district) return;
-    chooseDistrict(district.id);
-    setFeatures(featuresFor(district, DEFAULT_POINT));
+    const defaults = featuresFor(district, DEFAULT_POINT);
+    if (!defaults) return;
+    setSelectedDistrict(district.id);
+    setFeatures(defaults);
   }
   function saveCalculation() {
-    if (!result || loading || error) return;
+    if (!features || !result || loading || error) return;
     const district = districtFor(districts, selectedDistrict); const name = district?.name ?? `Своя точка ${nextId.current - 3}`;
     const time = new Date().toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" });
     setSaved((current) => [{ id: nextId.current++, name, district: selectedDistrict, features: { ...features }, result: { ...result }, time }, ...current]);
@@ -247,7 +275,7 @@ export default function Home() {
           </div>
           <p className="picked" aria-live="polite">{selected ? <>Выбрано: <strong>{selected.name}</strong></> : "Своя точка"}</p>
           <div className="top-districts"><h3 className="section-label">Лучшие районы сейчас</h3><ol>{ranked.length ? ranked.map((district, index) => <li key={district.id}><button type="button" onClick={() => chooseDistrict(district.id)}><span>{index + 1}</span>{district.name.replace(" округ", "")}<b>{heat[district.id]}/10</b></button></li>) : <li className="muted">Оценки районов недоступны.</li>}</ol></div>
-          <p className="map-note">Границы районов: OpenStreetMap, ODbL 1.0. Оценки спроса и показатели районов в демо-режиме синтетические.</p>
+          <p className="map-note">Границы районов: OpenStreetMap, ODbL 1.0. Рейтинг районов рассчитывается только по загруженным наблюдениям.</p>
         </section>
 
         <section className="panel parameters-panel" aria-labelledby="form-title">
@@ -255,9 +283,9 @@ export default function Home() {
           <div className="field-groups">{(["point", "area"] as const).map((group) => <div className="field-group" key={group}>
             <div><h3 className="section-label">{group === "point" ? "О вашей точке" : "Об окружении"}</h3><p className="group-subtitle">{group === "point" ? "Эти параметры задаёте вы." : "Подставлены по району, их можно уточнить."}</p></div>
             {FIELDS.filter((field) => field.group === group).map((field) => {
-              const value = features[field.key]; const progress = (value - field.min) / (field.max - field.min) * 100;
+              const value = features?.[field.key] ?? field.min; const progress = features ? (value - field.min) / (field.max - field.min) * 100 : 0;
               return <div className="field" key={field.key}><div className="field-heading"><label htmlFor={`field-${field.key}`}>{field.label}</label><output htmlFor={`field-${field.key}`}>{format(value)} <small>{field.unit}</small></output></div>
-                <input className="range" id={`field-${field.key}`} type="range" min={field.min} max={field.max} step={field.step} value={value} style={{ "--range-progress": `${progress}%` } as CSSProperties} onChange={(event) => setFeatures((current) => ({ ...current, [field.key]: Number(event.target.value) }))} />
+                <input className="range" id={`field-${field.key}`} type="range" min={field.min} max={field.max} step={field.step} value={value} disabled={!features} style={{ "--range-progress": `${progress}%` } as CSSProperties} onChange={(event) => setFeatures((current) => current ? ({ ...current, [field.key]: Number(event.target.value) }) : current)} />
                 <p className="field-hint">{field.hint}</p></div>;
             })}
           </div>)}</div>
@@ -282,7 +310,7 @@ export default function Home() {
           </dl>
           <div className="percentile"><span className="section-label">Место среди типовых локаций</span><div className="percentile-track" aria-hidden="true"><div className="percentile-fill" style={{ width: `${percentile}%` }} /><i style={{ left: `${percentile}%` }} /></div><div className="percentile-scale"><span>0</span><span>50</span><span>100</span></div><p>Спрос выше, чем у {percentile}% типовых локаций.</p></div>
           <div className="recommendation"><h3 className="section-label">Что это значит</h3><p>{result?.recommendation_text ?? "Рекомендация появится после расчёта."}</p></div>
-          <div className="actions"><button className="button primary" type="button" onClick={saveCalculation} disabled={!result || loading || Boolean(error)}>Сохранить расчёт</button><button className="button" type="button" onClick={reset}>Сбросить параметры</button></div>
+          <div className="actions"><button className="button primary" type="button" onClick={saveCalculation} disabled={!features || !result || loading || Boolean(error)}>Сохранить расчёт</button><button className="button" type="button" onClick={reset} disabled={!features}>Сбросить параметры</button></div>
         </section>
       </div>
 

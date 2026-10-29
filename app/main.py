@@ -1,8 +1,11 @@
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, ConfigDict, Field
 
+from ml_core.config import demo_mode_enabled
+from ml_core.data_pipeline import load_locations
 from ml_core.districts import district_feature_collection
 from ml_core.inference import predict_location
+from ml_core.synthetic_data import make_locations
 
 
 class LocationFeatures(BaseModel):
@@ -57,7 +60,8 @@ def health() -> dict[str, str]:
 
 @app.get("/api/v1/districts")
 def districts() -> dict:
-    return district_feature_collection()
+    locations = make_locations() if demo_mode_enabled() else load_locations()
+    return district_feature_collection(locations)
 
 
 @app.post("/api/v1/predict", response_model=PredictionResponse)

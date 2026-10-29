@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 
 
@@ -113,8 +114,21 @@ def load_locations(data_dir: str | Path | None = None) -> pd.DataFrame:
         "peak_factor", "income_area", "rent_cost", "demand",
     ]
     result = result[columns].dropna()
+    from shapely import contains_xy
+
+    from ml_core.districts import load_district_geometries
+
+    longitudes = result["lon"].to_numpy()
+    latitudes = result["lat"].to_numpy()
+    inside_city = np.zeros(len(result), dtype=bool)
+    for geometry in load_district_geometries():
+        inside_city |= contains_xy(geometry, longitudes, latitudes)
+    result = result.loc[inside_city]
     if result.empty:
-        raise ValueError("После объединения источников не осталось валидных локаций")
+        raise ValueError(
+            "После объединения источников не осталось валидных локаций "
+            "в районах Санкт-Петербурга"
+        )
     return result.reset_index(drop=True)
 
 

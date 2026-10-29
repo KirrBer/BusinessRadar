@@ -1,8 +1,16 @@
 services:
   backend:
     build: .
+    environment:
+      BUSINESSRADAR_DATA_DIR: /app/data
+      BUSINESSRADAR_DEMO: "${BUSINESSRADAR_DEMO:-false}"
     expose:
       - "8000"
+    volumes:
+      - type: bind
+        source: "${BUSINESSRADAR_HOST_DATA_DIR:-./data}"
+        target: /app/data
+        read_only: true
     healthcheck:
       test:
         - CMD
@@ -12,6 +20,7 @@ services:
       interval: 10s
       timeout: 3s
       retries: 5
+      start_period: 2m
 
   frontend:
     build: ./frontend

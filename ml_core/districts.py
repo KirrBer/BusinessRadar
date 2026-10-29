@@ -2,8 +2,12 @@ import json
 from functools import lru_cache
 from pathlib import Path
 
+import pandas as pd
 from shapely import force_2d
+from shapely import contains_xy
 from shapely.geometry import shape
+
+from ml_core.data_pipeline import load_locations
 
 
 DATA_FILE = Path(__file__).resolve().parent / "data" / "spb_districts.geojson"
@@ -62,12 +66,47 @@ def load_district_geometries() -> tuple:
     return tuple(shape(feature["geometry"]) for feature in load_districts())
 
 
-def district_feature_collection() -> dict:
+def district_feature_collection(locations: pd.DataFrame | None = None) -> dict:
+    observations = load_locations() if locations is None else locations
+    longitudes = observations["lon"].to_numpy()
+    latitudes = observations["lat"].to_numpy()
+    metrics = (
+        "traffic",
+        "pop_density",
+        "competitors",
+        "avg_check",
+        "peak_factor",
+        "income_area",
+        "rent_cost",
+    )
+    features = []
+
+    for source_feature, geometry in zip(load_districts(), load_district_geometries(), strict=True):
+        properties = source_feature["properties"]
+        inside = contains_xy(geometry, longitudes, latitudes)
+        district_rows = observations.loc[inside]
+        summary = {
+            metric: float(district_rows[metric].median()) if not district_rows.empty else None
+            for metric in metrics
+        }
+        features.append({
+            "type": "Feature",
+            "properties": {
+                "id": properties["id"],
+                "name": properties["name"],
+                "osm_id": properties["osm_id"],
+                "center": properties["center"],
+                "sample_count": len(district_rows),
+                **summary,
+            },
+            "geometry": source_feature["geometry"],
+        })
+
     return {
         "type": "FeatureCollection",
         "name": "Районы Санкт-Петербурга",
         "attribution": "© OpenStreetMap contributors",
         "license": "ODbL-1.0",
         "source": "https://www.openstreetmap.org/",
-        "features": list(load_districts()),
+        "features": features,
     }

@@ -1,6 +1,8 @@
+import pandas as pd
 from fastapi.testclient import TestClient
 
 from app import main
+from ml_core.districts import load_districts
 
 
 client = TestClient(main.app)
@@ -24,7 +26,25 @@ def test_health_check():
     assert response.json() == {"status": "ok"}
 
 
-def test_district_geojson_contains_all_spb_districts():
+def test_district_geojson_contains_all_spb_districts(monkeypatch):
+    central = next(
+        feature["properties"]
+        for feature in load_districts()
+        if feature["properties"]["id"] == "cen"
+    )
+    monkeypatch.setattr(main, "load_locations", lambda: pd.DataFrame([{
+        "lat": central["center"]["lat"],
+        "lon": central["center"]["lon"],
+        "traffic": 240,
+        "pop_density": 120,
+        "competitors": 2,
+        "avg_check": 700,
+        "peak_factor": 0.3,
+        "income_area": 1.0,
+        "rent_cost": 0.5,
+        "demand": 12,
+    }]))
+
     response = client.get("/api/v1/districts")
 
     assert response.status_code == 200
@@ -33,6 +53,9 @@ def test_district_geojson_contains_all_spb_districts():
     assert len(data["features"]) == 18
     assert all(feature["geometry"]["type"] in {"Polygon", "MultiPolygon"} for feature in data["features"])
     assert {feature["properties"]["name"] for feature in data["features"]} >= {"Центральный район", "Петроградский район"}
+    central_data = next(feature["properties"] for feature in data["features"] if feature["properties"]["id"] == "cen")
+    assert central_data["sample_count"] == 1
+    assert central_data["traffic"] == 240
 
 
 def test_frontend_is_not_served_by_api():

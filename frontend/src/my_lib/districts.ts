@@ -5,11 +5,14 @@ export type DistrictProperties = {
   name: string;
   osm_id: number;
   center: { lat: number; lon: number };
-  traffic: number;
-  pop_density: number;
-  competitors: number;
-  income_area: number;
-  rent_cost: number;
+  sample_count: number;
+  traffic: number | null;
+  pop_density: number | null;
+  competitors: number | null;
+  avg_check: number | null;
+  peak_factor: number | null;
+  income_area: number | null;
+  rent_cost: number | null;
 };
 
 export type DistrictFeature = Feature<Polygon | MultiPolygon, DistrictProperties>;
