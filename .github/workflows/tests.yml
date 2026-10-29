@@ -14,8 +14,8 @@ jobs:
           python-version: "3.13"
       - uses: astral-sh/setup-uv@v6
       - run: uv sync --group dev --no-install-project
-      - run: uv run --no-sync python -m ml_core.train_rf
-      - run: uv run --no-sync python -m ml_core.train_kmeans
+      - run: uv run --no-sync python -m ml_core.train_rf --demo
+      - run: uv run --no-sync python -m ml_core.train_kmeans --demo
       - run: uv run --no-sync pytest -q
       - uses: actions/setup-node@v4
         with:

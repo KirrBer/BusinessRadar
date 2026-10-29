@@ -1,10 +1,12 @@
 import json, joblib
+import argparse
 import numpy as np
 from sklearn.preprocessing import StandardScaler
 from sklearn.cluster import KMeans
 from sklearn.metrics import silhouette_score
 from ml_core.config import RANDOM_STATE, ARTIFACTS
 from ml_core.features import GEO_COLS
+from ml_core.data_pipeline import load_locations
 from ml_core.synthetic_data import make_locations
 
 def name_clusters(centers):  # centers: [lat,lon,pop,income,traffic]
@@ -16,8 +18,8 @@ def name_clusters(centers):  # centers: [lat,lon,pop,income,traffic]
                    f"{'трафик.' if tr>med[4] else 'локальный'}")
     return out
 
-def train():
-    df = make_locations()
+def train(data_dir=None, demo=False):
+    df = make_locations() if demo else load_locations(data_dir)
     Xg = df[GEO_COLS].values
     scaler = StandardScaler().fit(Xg)            # без скейла градусы зададут признаки
     Xs = scaler.transform(Xg)
@@ -42,4 +44,8 @@ def train():
     print("K-Means: k =", best_k, "silhouette =", round(scores[best_k], 3))
 
 if __name__ == "__main__":
-    train()
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--data-dir")
+    parser.add_argument("--demo", action="store_true")
+    args = parser.parse_args()
+    train(args.data_dir, args.demo)
